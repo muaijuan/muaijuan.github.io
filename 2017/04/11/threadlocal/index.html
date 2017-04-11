@@ -1,0 +1,876 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="Android,源码," />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.0" />
+
+
+
+
+
+
+<meta name="description" content="最近在学习Handler源码的时候看到Looper的存储使用了ThreadLocal，激起了我很大的好奇心以及兴趣！那么为何要使用ThreadLocal呢？ThreadLocal是什么呢？它能解决什么样的问题呢？带着这么疑问来学习下ThreadLocal。
+ThreadLocal介绍ThreadLocal如果单纯从字面上理解的话好像是“本地线程”的意思，其实并不是，它真正的意思是线程本地变量，只是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入理解ThreadLocal">
+<meta property="og:url" content="http://yoursite.com/2017/04/11/threadlocal/index.html">
+<meta property="og:site_name" content="Amy’s Notes">
+<meta property="og:description" content="最近在学习Handler源码的时候看到Looper的存储使用了ThreadLocal，激起了我很大的好奇心以及兴趣！那么为何要使用ThreadLocal呢？ThreadLocal是什么呢？它能解决什么样的问题呢？带着这么疑问来学习下ThreadLocal。
+ThreadLocal介绍ThreadLocal如果单纯从字面上理解的话好像是“本地线程”的意思，其实并不是，它真正的意思是线程本地变量，只是">
+<meta property="og:updated_time" content="2017-04-11T16:00:59.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="深入理解ThreadLocal">
+<meta name="twitter:description" content="最近在学习Handler源码的时候看到Looper的存储使用了ThreadLocal，激起了我很大的好奇心以及兴趣！那么为何要使用ThreadLocal呢？ThreadLocal是什么呢？它能解决什么样的问题呢？带着这么疑问来学习下ThreadLocal。
+ThreadLocal介绍ThreadLocal如果单纯从字面上理解的话好像是“本地线程”的意思，其实并不是，它真正的意思是线程本地变量，只是">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":0,"b2t":false,"scrollpercent":false},
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: 'LLXFCZBPU9',
+      apiKey: 'bf54490aa8bc824ca0123a524731cef2',
+      indexName: 'myblog',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"输入关键字","hits_empty":"“没有找到与⎡${query}⎦相关的内容”","hits_stats":"“${hits}条相关记录，共耗时${time}ms”"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2017/04/11/threadlocal/"/>
+
+
+
+
+
+  <title> 深入理解ThreadLocal | Amy’s Notes </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Amy’s Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br />
+            
+            搜索
+          </a>
+        </li>
+      
+    </ul>
+  
+
+  
+    <div class="site-search">
+      
+  
+  <div class="algolia-popup popup search-popup">
+    <div class="algolia-search">
+      <div class="algolia-search-input-icon">
+        <i class="fa fa-search"></i>
+      </div>
+      <div class="algolia-search-input" id="algolia-search-input"></div>
+    </div>
+
+    <div class="algolia-results">
+      <div id="algolia-stats"></div>
+      <div id="algolia-hits"></div>
+      <div id="algolia-pagination" class="algolia-pagination"></div>
+    </div>
+
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+  </div>
+
+
+
+
+    </div>
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2017/04/11/threadlocal/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Amy">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar-2.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Amy’s Notes">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                深入理解ThreadLocal
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2017-04-11T17:41:19+08:00">
+                2017-04-11
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Android/" itemprop="url" rel="index">
+                    <span itemprop="name">Android</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>最近在学习Handler源码的时候看到Looper的存储使用了ThreadLocal，激起了我很大的好奇心以及兴趣！那么为何要使用ThreadLocal呢？ThreadLocal是什么呢？它能解决什么样的问题呢？带着这么疑问来学习下ThreadLocal。</p>
+<h3 id="ThreadLocal介绍"><a href="#ThreadLocal介绍" class="headerlink" title="ThreadLocal介绍"></a>ThreadLocal介绍</h3><p>ThreadLocal如果单纯从字面上理解的话好像是“本地线程”的意思，其实并不是，它真正的意思是线程本地变量，只是这个名字起的太容易让人误解了，应该叫ThreadLocalVariable更准确些。我们先看一看官方对hreadLocal的描述：</p>
+<p>This class provides thread-local variables. These variables differ from their normal counterparts in that each thread that accesses one (via its get or set method) has its own, independently initialized copy of the variable. ThreadLocal instances are typically private static fields in classes that wish to associate state with a thread (e.g., a user ID or Transaction ID).<br>翻译成中文：<br>该类提供了线程本地 (thread-local) 变量。这些变量与线程的局部变量不同，每个线程都保存一份该变量的副本，可以通过get或者set方法访问。ThreadLocal 实例通常是类中的 private static 字段，它们希望将状态与某一个线程（例如，用户 ID 或事务 ID）相关联。</p>
+
+<h3 id="ThreadLocal理解"><a href="#ThreadLocal理解" class="headerlink" title="ThreadLocal理解"></a>ThreadLocal理解</h3><p>我们从介绍中摘出要点：<br>1、每个线程读拥有自己的局部变量<br><em>每个线程都有一个独立于其他线程的上下文来保存这个变量，一个线程的本地变量对其他线程是不可见的。</em><br>2、独立于变量的初始化副本，或者初始化一个属于自己的变量<br><em>ThreadLocal可以给一个初始值，而每个线程都会获得这个初始化值的一个副本，这样才能保证不同的线程都有一份拷贝。同样也可以new的方式为线程创建一个变量</em><br>3、变量改变只与当前线程关联，线程之间互不干扰<br><em>ThreadLocal 不是用于解决共享变量的问题的，不是为了协调线程同步而存在，而是为了方便每个线程处理自己的状态而引入的一个机制，理解这点对正确使用ThreadLocal至关重要。</em></p>
+<p>看个例子来加深下理解：</p>
+<pre><code>ThreadLocal&lt;Integer&gt; threadLocal;
+
+public void printThreadLocal() {
+
+    threadLocal = new ThreadLocal&lt;Integer&gt;();
+
+    //在主线程里设置threadLocal的值并输出
+    threadLocal.set(0);
+    System.out.println(&quot;[Thread#main]threadLocal=&quot; + &quot; : &quot; + threadLocal.get());
+
+    new Thread(&quot;Thread#1&quot;) {
+        @Override
+        public void run() {
+            //设置threadLocal的值为1
+            threadLocal.set(1);
+            System.out.println(&quot;[Thread#1]threadLocal=&quot; + &quot; : &quot; + threadLocal.get());
+        }
+    }.start();
+
+    new Thread(&quot;Thread#2&quot;) {
+        @Override
+        public void run() {
+            //不设置任何值，输出null
+            System.out.println(&quot;[Thread#2]threadLocal=&quot; + &quot; : &quot; + threadLocal.get());
+        }
+    }.start();
+
+    new Thread(&quot;Thread#3&quot;) {
+        @Override
+        public void run() {
+            //设置为3，然后remove，输出null
+            threadLocal.set(3);
+            threadLocal.remove();
+            System.out.println(&quot;[Thread#3]threadLocal=&quot; + &quot; : &quot; + threadLocal.get());
+        }
+    }.start(); 
+}
+</code></pre><p>输出：</p>
+<pre><code>04-10 23:28:31.958 13438-13438/com.amy.demo I/System.out: [Thread#main]threadLocal= : 0
+04-10 23:28:31.959 13438-13831/com.amy.demo I/System.out: [Thread#1]threadLocal= : 1
+04-10 23:28:31.959 13438-13832/com.amy.demo I/System.out: [Thread#2]threadLocal= : null
+04-10 23:28:31.960 13438-13833/com.amy.demo I/System.out: [Thread#3]threadLocal= : null
+</code></pre><p>事实证明，ThreadLocal确实做到了官方文档里说到的功能：存储Thread的信息，并且每个线程之间信息独立，即它们只能访问自己对应的信息，并且修改自己对应的信息之后对其他线程没有影响。</p>
+<h3 id="从源码看ThreadLocal"><a href="#从源码看ThreadLocal" class="headerlink" title="从源码看ThreadLocal"></a>从源码看ThreadLocal</h3><p>ThreadLocal有一个内部类ThreadLocalMap,它的作用非常关键，它就是线程真正保存线程自己本地变量的容器。每一个线程都有自己的单独的一个ThreadLocalMap实例，其所有的本地变量都会保存到这一个map中。这里ThradLocalMap的实现细节就不细说了，有兴趣可以自己去看ThreadLocal的源码。<br>ThreadLocal的四个主要方法：</p>
+<pre><code>1. public void set(T value)：将值放入线程本地变量中
+2. public T get()：从线程本地变量中获取值
+3. public void remove()：从线程本地变量中移除值（有助于JVM 垃圾回收）
+4. protected T initialValue()：返回线程本地变量中的初始值（默认为 null）
+</code></pre><p><strong>initialValue()：</strong> <em>这个方法是protected的，需要程序员自己实现，不实现则默认为 null</em></p>
+<pre><code> protected T initialValue() {
+    return null;
+}
+</code></pre><p><strong>get方法：</strong></p>
+<pre><code>public T get() {
+    //获取当前执行线程
+    Thread t = Thread.currentThread();
+    //取得当前线程的ThreadLocalMap实例
+    ThreadLocalMap map = getMap(t);
+    //如果map不为空，说明该线程已经有了一个ThreadLocalMap实例
+    if (map != null) {
+        //map中保存线程的所有的线程本地变量，我们要去查找当前线程本地变量
+        ThreadLocalMap.Entry e = map.getEntry(this);
+        //如果当前线程本地变量存在这个map中，则返回其对应的值
+        if (e != null)
+            return (T)e.value;
+    }
+    //如果map不存在或者map中不存在当前线程本地变量，返回初始值
+    return setInitialValue();
+}
+</code></pre><p><strong>getMap方法：</strong> <em>Thread对象都有一个ThreadLocalMap类型的属性threadLocals，这个属性是专门用于保存自己所有的线程本地变量的。</em></p>
+<pre><code>//直接返回线程对象的threadLocals属性
+ThreadLocalMap getMap(Thread t) {
+    return t.threadLocals;
+}    
+</code></pre><p><strong>setInitialValue方法：</strong></p>
+<pre><code>private T setInitialValue() {
+    //获取初始化值
+    T value = initialValue();
+    Thread t = Thread.currentThread();
+    ThreadLocalMap map = getMap(t);
+    //如果map不为空，将初始化值放入到当前线程的ThreadLocalMap对象中
+    if (map != null)
+        map.set(this, value);
+    else
+        //当前线程第一次使用本地线程变量，需要对map进行初始化工作
+        createMap(t, value);
+    //返回初始化值
+    return value;
+}
+</code></pre><p> <strong>set方法：</strong></p>
+<pre><code> public void set(T value) {
+    Thread t = Thread.currentThread();
+    ThreadLocalMap map = getMap(t);
+
+    if (map != null)
+        map.set(this, value);
+    //说明线程第一次使用线程本地变量
+    else
+        createMap(t, value);
+} 
+</code></pre><p><strong>remove方法：</strong></p>
+<pre><code>public void remove() {
+     //获取当前线程的ThreadLocalMap对象
+     ThreadLocalMap m = getMap(Thread.currentThread());
+     //如果map不为空，则删除该本地变量的值
+     if (m != null)
+         m.remove(this);
+ }   
+</code></pre><h3 id="ThreadLocal与线程同步机制的比较"><a href="#ThreadLocal与线程同步机制的比较" class="headerlink" title="ThreadLocal与线程同步机制的比较"></a>ThreadLocal与线程同步机制的比较</h3><p><strong>同步机制</strong>：通过对象的锁机制保证同一时间只有一个线程访问变量。这时该变量是多个线程共享的，使用同步机制要求程序慎密地分析什么时候对变量进行读写，什么时候需要锁定某个对象，什么时候释放对象锁等繁杂的问题，程序设计和编写难度相对较大。<br><strong>ThreadLocal</strong>：从另一个角度来解决多线程的并发访问。ThreadLocal会为每一个线程提供一个独立的变量副本，从而隔离了多个线程对数据的访问冲突。因为每一个线程都拥有自己的变量副本，从而也就没有必要对该变量进行同步了。</p>
+<h3 id="ThreadLocal使用场景"><a href="#ThreadLocal使用场景" class="headerlink" title="ThreadLocal使用场景"></a>ThreadLocal使用场景</h3><p>当某个变量是与线程相关的，并且不同线程具有不同值的时候，我们就可以考虑使用ThreadLocal这个类来简化我们的工作（比如Looper）。</p>
+<h3 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h3><p>   由于对ThreadLocal了解不是很深刻，仅仅理解那么一点点，也许有些观点不一定正确，希望看到的朋友批评指正谢谢。</p>
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Android/" rel="tag"># Android</a>
+          
+            <a href="/tags/源码/" rel="tag"># 源码</a>
+          
+        </div>
+      
+
+      
+        
+      
+
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/avatar-2.jpg"
+               alt="Amy" />
+          <p class="site-author-name" itemprop="name">Amy</p>
+           
+              <p class="site-description motion-element" itemprop="description">没有捷径！没有捷径！</br> 没有捷径！!</p>
+          
+        </div>
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/archives">
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-categories">
+              <a href="/categories/index.html">
+                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-name">分类</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              <a href="/tags/index.html">
+                <span class="site-state-item-count">2</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+            
+              <span class="links-of-author-item">
+                <a href="https://github.com/muaijuan" target="_blank" title="GitHub">
+                  
+                    <i class="fa fa-fw fa-github"></i>
+                  
+                  GitHub
+                </a>
+              </span>
+            
+          
+        </div>
+
+        
+        
+
+        
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#ThreadLocal介绍"><span class="nav-number">1.</span> <span class="nav-text">ThreadLocal介绍</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ThreadLocal理解"><span class="nav-number">2.</span> <span class="nav-text">ThreadLocal理解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#从源码看ThreadLocal"><span class="nav-number">3.</span> <span class="nav-text">从源码看ThreadLocal</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ThreadLocal与线程同步机制的比较"><span class="nav-number">4.</span> <span class="nav-text">ThreadLocal与线程同步机制的比较</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ThreadLocal使用场景"><span class="nav-number">5.</span> <span class="nav-text">ThreadLocal使用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#总结"><span class="nav-number">6.</span> <span class="nav-text">总结</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2017</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Amy</span>
+</div>
+
+
+<div class="powered-by">
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Mist
+  </a>
+</div>
+
+
+        
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+  
+  
+  
+  <link rel="stylesheet" href="/lib/algolia-instant-search/instantsearch.min.css">
+
+  
+  
+  <script src="/lib/algolia-instant-search/instantsearch.min.js"></script>
+  
+
+  <script src="/js/src/algolia-search.js?v=5.1.0"></script>
+
+
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
